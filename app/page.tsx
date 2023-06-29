@@ -3,8 +3,8 @@
 import { useRef, useState } from "react";
 import { useInterval } from "./hooks/useInterval";
 
-const FOCUS_DURATION = 0.1 * 60
-const BREAK_DURATION = 0.05 * 60
+const FOCUS_DURATION = 25 * 60
+const BREAK_DURATION = 5 * 60
 
 export default function Index() {
   const [count, setCount] = useState(FOCUS_DURATION);
