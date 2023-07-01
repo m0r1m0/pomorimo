@@ -10,7 +10,6 @@ export default function Index() {
   const [count, setCount] = useState(FOCUS_DURATION);
   const [isFocusMode, setIsFocusMode] = useState(true);
   const [timerRunning, setTimerRunning] = useState(false);
-  const [alarmPlaying, setAlarmPlaying] = useState(false);
   const alarmSoundRef = useRef<HTMLAudioElement | null>(null);
   const [username, setUsername] = useState("");
   const [graphID, setGraphID] = useState("");
@@ -55,34 +54,21 @@ export default function Index() {
       const alarmSound = new Audio("alarm-clock-short-6402.mp3");
       alarmSoundRef.current = alarmSound;
     }
-    setAlarmPlaying(true);
-    alarmSoundRef.current.loop = true;
     alarmSoundRef.current.play().catch((error) => {
       console.error("Failed to play alarm sound:", error);
-      setAlarmPlaying(false);
     });
   };
 
-  const stopAlarmSound = () => {
-    if (alarmSoundRef.current !== null) {
-      alarmSoundRef.current.pause();
-      alarmSoundRef.current.currentTime = 0;
-    }
-    setAlarmPlaying(false);
-  };
-
   const handleClick = () => {
-    if (alarmPlaying) {
-      stopAlarmSound();
-      return;
-    }
-
     if (timerRunning) {
       setTimerRunning(false);
       return;
     }
 
     if (!timerRunning) {
+      if (alarmSoundRef.current !== null) {
+        alarmSoundRef.current.pause();
+      }
       setTimerRunning(true);
       return;
     }
@@ -103,7 +89,7 @@ export default function Index() {
             className="mt-8 bg-slate-50 text-black font-bold w-40 h-10 text-2xl rounded"
             onClick={handleClick}
           >
-            {alarmPlaying || timerRunning ? "STOP" : "START"}
+            {timerRunning ? "STOP" : "START"}
           </button>
         </div>
       )}
