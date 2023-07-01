@@ -16,49 +16,18 @@ export default function Index() {
   const [graphID, setGraphID] = useState("");
   const [token, setToken] = useState("");
   const [isPixelaInitialized, setIsPixelaInitialized] = useState(false);
-  const [pixelQuantity, setPixelQuantity] = useState(0);
-  const dateText = getTodayDate();
 
-  const initializePixela = async () => {
-    const response = await retryFetch(`https://pixe.la/v1/users/${username}/graphs/${graphID}/${dateText}`,
-    {
+  const incrementPixela = async () => {
+    await retryFetch(`https://pixe.la/v1/users/${username}/graphs/${graphID}/increment`, {
+      method: "PUT",
       headers: {
         "X-USER-TOKEN": token,
-      },
-    });
-    if (response.ok) {
-      const { quantity } = await response.json();
-      setPixelQuantity(Number(quantity));
-      setIsPixelaInitialized(true);
-      return;
-    }
-
-    if (response.status === 404) {
-      setPixelQuantity(0);
-      setIsPixelaInitialized(true);
-      return;
-    }
-  };
-
-  const updatePixel = async () => {
-    const updatedPixelQuantity = pixelQuantity + 1;
-
-    const response = await retryFetch(
-      `https://pixe.la/v1/users/${username}/graphs/${graphID}/${dateText}`,
-      {
-        method: "PUT",
-        headers: {
-          "X-USER-TOKEN": token,
-        },
-        body: JSON.stringify({
-          quantity: updatedPixelQuantity.toString(),
-        }),
       }
-    );
+    });
+  }
 
-    if (response.ok) {
-      setPixelQuantity(updatedPixelQuantity);
-    }
+  const initializePixela = async () => {
+    setIsPixelaInitialized(true);
   };
 
   useInterval(
@@ -67,7 +36,7 @@ export default function Index() {
         if (isFocusMode) {
           setCount(BREAK_DURATION);
           setIsFocusMode(false);
-          updatePixel();
+          incrementPixela();
         } else {
           setCount(FOCUS_DURATION);
           setIsFocusMode(true);
@@ -192,15 +161,6 @@ export default function Index() {
       )}
     </main>
   );
-}
-
-function getTodayDate() {
-  var today = new Date();
-  var year = today.getFullYear().toString();
-  var month = (today.getMonth() + 1).toString().padStart(2, "0");
-  var day = today.getDate().toString().padStart(2, "0");
-  var formattedDate = year + month + day;
-  return formattedDate;
 }
 
 const retryFetch = async (
