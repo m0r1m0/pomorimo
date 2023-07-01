@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useInterval } from "./hooks/useInterval";
+import { Button } from "./components/buttons/Button";
 
 const FOCUS_DURATION = 25 * 60;
 const BREAK_DURATION = 5 * 60;
@@ -85,12 +86,12 @@ export default function Index() {
               .padStart(2, "0")}
             :{(count % 60).toString().padStart(2, "0")}
           </span>
-          <button
-            className="mt-8 bg-slate-50 text-black font-bold w-40 h-10 text-2xl rounded"
+          <Button
+            className="mt-8"
             onClick={handleClick}
           >
-            {timerRunning ? "STOP" : "START"}
-          </button>
+            {timerRunning ? "PAUSE" : "START"}
+          </Button>
         </div>
       )}
       {!isPixelaInitialized && (
@@ -137,12 +138,13 @@ export default function Index() {
               }}
             />
           </div>
-          <button
-            className="mt-8 bg-slate-50 text-black font-bold w-60 h-10 text-2xl rounded"
+          <Button
+            className="mt-8"
+            size="lg"
             onClick={initializePixela}
           >
-            {"Initialize Pixela"}
-          </button>
+            Initialize Pixela
+          </Button>
         </div>
       )}
     </main>
