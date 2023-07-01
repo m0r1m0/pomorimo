@@ -1,11 +1,17 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useInterval } from "./hooks/useInterval";
 import { Button } from "./components/buttons/Button";
+import { AnalyticsCard } from "./components/AnalyticsCard";
 
 const FOCUS_DURATION = 25 * 60;
 const BREAK_DURATION = 5 * 60;
+
+type Pixel = {
+  date: string;
+  quantity: string;
+}
 
 export default function Index() {
   const [count, setCount] = useState(FOCUS_DURATION);
@@ -16,18 +22,36 @@ export default function Index() {
   const [graphID, setGraphID] = useState("");
   const [token, setToken] = useState("");
   const [isPixelaInitialized, setIsPixelaInitialized] = useState(false);
+  const [pixels, setPixels] = useState<Pixel[]>([]);
+  const lastWeek = formatDate(new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000));
 
   const incrementPixela = async () => {
-    await retryFetch(`https://pixe.la/v1/users/${username}/graphs/${graphID}/increment`, {
-      method: "PUT",
-      headers: {
-        "X-USER-TOKEN": token,
+    await retryFetch(
+      `https://pixe.la/v1/users/${username}/graphs/${graphID}/increment`,
+      {
+        method: "PUT",
+        headers: {
+          "X-USER-TOKEN": token,
+        },
       }
-    });
-  }
+    );
+  };
 
   const initializePixela = async () => {
     setIsPixelaInitialized(true);
+    if (graphID.length > 0 && username.length > 0 && token.length > 0) {
+      const response = await retryFetch(
+        `https://pixe.la/v1/users/${username}/graphs/${graphID}/pixels?withBody=true&from=${lastWeek}`,
+        {
+          method: "GET",
+          headers: {
+            "X-USER-TOKEN": token,
+          },
+        }
+      );
+      const { pixels } = await response.json();
+      setPixels(pixels);
+    }
   };
 
   useInterval(
@@ -49,6 +73,28 @@ export default function Index() {
     },
     timerRunning ? 1000 : null
   );
+
+  const todayPixelQuantity = useMemo(() => {
+    const today = formatDate(new Date());
+    return Number(pixels.find(p => p.date === today)?.quantity ?? "0");
+  }, [pixels])
+
+  const yesterdayPixelQuantity = useMemo(() => {
+    let yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterday = formatDate(yesterdayDate);
+    return Number(pixels.find(p => p.date === yesterday)?.quantity ?? "0");
+  }, [pixels])
+
+  const totalPixelQuantity = useMemo(() => {
+    return pixels.reduce((acc, pixel) => {
+      return acc + Number(pixel.quantity);
+    }, 0)
+  }, [pixels])
+
+  const lastWeekPixelQuantity = useMemo(() => {
+    return Number(pixels.find(p => p.date === lastWeek)?.quantity ?? "0");
+  }, [lastWeek, pixels])
 
   const playAlarmSound = () => {
     if (!alarmSoundRef.current) {
@@ -78,21 +124,35 @@ export default function Index() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center">
       {isPixelaInitialized && (
-        <div className="flex flex-col items-center justify-center">
-          <span className="text-2xl">{isFocusMode ? "FOCUS" : "BREAK"}</span>
-          <span className="text-9xl mt-4">
-            {Math.floor(count / 60)
-              .toString()
-              .padStart(2, "0")}
-            :{(count % 60).toString().padStart(2, "0")}
-          </span>
-          <Button
-            className="mt-8"
-            onClick={handleClick}
-          >
-            {timerRunning ? "PAUSE" : "START"}
-          </Button>
-        </div>
+        <>
+          <div className="flex flex-col items-center justify-center">
+            <span className="text-2xl">{isFocusMode ? "FOCUS" : "BREAK"}</span>
+            <span className="text-9xl mt-4">
+              {Math.floor(count / 60)
+                .toString()
+                .padStart(2, "0")}
+              :{(count % 60).toString().padStart(2, "0")}
+            </span>
+            <Button className="mt-8" onClick={handleClick}>
+              {timerRunning ? "PAUSE" : "START"}
+            </Button>
+          </div>
+          <div className="mt-20 flex">
+            <AnalyticsCard
+              title="Today Focus"
+              value={todayPixelQuantity}
+              prevValue={yesterdayPixelQuantity}
+              diffLabel="yesterday"
+            />
+            <AnalyticsCard
+              title="Weekly Focus"
+              value={totalPixelQuantity}
+              prevValue={lastWeekPixelQuantity}
+              diffLabel="7 days ago"
+              className="ml-4"
+            />
+          </div>
+        </>
       )}
       {!isPixelaInitialized && (
         <div className="mt-12 flex flex-col">
@@ -138,11 +198,7 @@ export default function Index() {
               }}
             />
           </div>
-          <Button
-            className="mt-8"
-            size="lg"
-            onClick={initializePixela}
-          >
+          <Button className="mt-8" size="lg" onClick={initializePixela}>
             Initialize Pixela
           </Button>
         </div>
@@ -164,3 +220,11 @@ const retryFetch = async (
   }
   return response;
 };
+
+function formatDate(date: Date) {
+  const year = date.getFullYear().toString();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const formattedDate = year + month + day;
+  return formattedDate;
+}
