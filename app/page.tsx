@@ -5,6 +5,7 @@ import { useInterval } from "./hooks/useInterval";
 import { Button } from "./components/buttons/Button";
 import { AnalyticsCard } from "./components/AnalyticsCard";
 import { Tooltip } from "./components/Tooltip";
+import { PixelaClient } from "./pixela";
 
 const FOCUS_DURATION = 25 * 60;
 const BREAK_DURATION = 5 * 60;
@@ -27,32 +28,22 @@ export default function Index() {
   const lastWeek = formatDate(new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000));
 
   const incrementPixela = async () => {
-    await retryFetch(
-      `https://pixe.la/v1/users/${username}/graphs/${graphID}/increment`,
-      {
-        method: "PUT",
-        headers: {
-          "X-USER-TOKEN": token,
-        },
-      }
-    );
+    const pixelaClient = new PixelaClient(username, graphID, token);
+    await pixelaClient.increment();
+    refreshPixels();
   };
 
   const initializePixela = async () => {
     setIsPixelaInitialized(true);
-    if (graphID.length > 0 && username.length > 0 && token.length > 0) {
-      const response = await retryFetch(
-        `https://pixe.la/v1/users/${username}/graphs/${graphID}/pixels?withBody=true&from=${lastWeek}`,
-        {
-          method: "GET",
-          headers: {
-            "X-USER-TOKEN": token,
-          },
-        }
-      );
-      const { pixels } = await response.json();
-      setPixels(pixels);
-    }
+    const pixelaClient = new PixelaClient(username, graphID, token);
+    const pixels = await pixelaClient.getPixels(lastWeek);
+    setPixels(pixels);
+  };
+
+  const refreshPixels = async () => {
+    const pixelaClient = new PixelaClient(username, graphID, token);
+    const pixels = await pixelaClient.getPixels(lastWeek);
+    setPixels(pixels);
   };
 
   useInterval(
@@ -105,21 +96,6 @@ export default function Index() {
     alarmSoundRef.current.play().catch((error) => {
       console.error("Failed to play alarm sound:", error);
     });
-  };
-
-  const handleClick = () => {
-    if (timerRunning) {
-      setTimerRunning(false);
-      return;
-    }
-
-    if (!timerRunning) {
-      if (alarmSoundRef.current !== null) {
-        alarmSoundRef.current.pause();
-      }
-      setTimerRunning(true);
-      return;
-    }
   };
 
   const start = () => {
