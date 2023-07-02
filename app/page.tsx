@@ -121,6 +121,23 @@ export default function Index() {
     }
   };
 
+  const start = () => {
+    if (alarmSoundRef.current !== null) {
+      alarmSoundRef.current.pause();
+    }
+    setTimerRunning(true);
+  }
+
+  const pause = () => {
+    setTimerRunning(false);
+  }
+
+  const skip = () => {
+    setTimerRunning(false);
+    setCount(isFocusMode ? BREAK_DURATION : FOCUS_DURATION);
+    setIsFocusMode(m => !m);
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center">
       {isPixelaInitialized && (
@@ -133,9 +150,25 @@ export default function Index() {
                 .padStart(2, "0")}
               :{(count % 60).toString().padStart(2, "0")}
             </span>
-            <Button className="mt-8" onClick={handleClick}>
-              {timerRunning ? "PAUSE" : "START"}
-            </Button>
+            {
+              timerRunning && (
+                <div className="mt-8 flex items-center">
+                  <Button onClick={pause}>
+                    PAUSE
+                  </Button>
+                  <Button className="ml-2 font-normal bg-transparent text-current hover:border-2" onClick={skip}>
+                    Skip
+                  </Button>
+                </div>
+              )
+            }
+            {
+              !timerRunning && (
+                <Button className="mt-8" onClick={start}>
+                  START
+                </Button>
+              )
+            }
           </div>
           <div className="mt-20 flex">
             <AnalyticsCard
