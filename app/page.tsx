@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useInterval } from "./hooks/useInterval";
 import { Button } from "./components/buttons/Button";
 import { AnalyticsCard } from "./components/AnalyticsCard";
+import { Tooltip } from "./components/Tooltip";
 
 const FOCUS_DURATION = 25 * 60;
 const BREAK_DURATION = 5 * 60;
@@ -156,9 +157,11 @@ export default function Index() {
                   <Button onClick={pause}>
                     PAUSE
                   </Button>
-                  <Button className="ml-2 font-normal bg-transparent text-current hover:border-2" onClick={skip}>
-                    Skip
-                  </Button>
+                  <Tooltip label="Skip this session">
+                    <Button className="ml-2 font-normal bg-transparent text-current hover:border border-black dark:border-slate-50 transition" onClick={skip}>
+                      Skip
+                    </Button>
+                  </Tooltip>
                 </div>
               )
             }
