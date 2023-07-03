@@ -6,15 +6,21 @@ export class PixelaClient {
 
   constructor(username: string, graphID: string, token: string) {
     if (!this.isValidUsername(username)) {
-      throw new Error(`Invalid username. Username must match the pattern /^[a-z][a-z0-9-]{1,32}$/`);
+      throw new Error(
+        `Invalid username. Username must match the pattern /^[a-z][a-z0-9-]{1,32}$/`
+      );
     }
 
     if (!this.isValidGraphID(graphID)) {
-      throw new Error(`Invalid graph ID. Graph ID must match the pattern /^[a-z][a-z0-9-]{1,16}$/`);
+      throw new Error(
+        `Invalid graph ID. Graph ID must match the pattern /^[a-z][a-z0-9-]{1,16}$/`
+      );
     }
 
     if (!this.isValidToken(token)) {
-      throw new Error(`Invalid token. Token must match the pattern /^[ -~]{8,128}$/`);
+      throw new Error(
+        `Invalid token. Token must match the pattern /^[ -~]{8,128}$/`
+      );
     }
 
     this.username = username;
@@ -23,7 +29,7 @@ export class PixelaClient {
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   isValidUsername(username: string): boolean {
@@ -31,7 +37,6 @@ export class PixelaClient {
     return regex.test(username);
   }
 
-  
   isValidGraphID(graphID: string): boolean {
     const regex = /^[a-z][a-z0-9-]{1,16}$/;
     return regex.test(graphID);
@@ -41,8 +46,12 @@ export class PixelaClient {
     const regex = /^[ -~]{8,128}$/;
     return regex.test(token);
   }
-  
-  private async requestWithRetry<T>(url: string, options: RequestInit, retryCount: number = 0): Promise<T> {
+
+  private async requestWithRetry<T>(
+    url: string,
+    options: RequestInit,
+    retryCount: number = 0
+  ): Promise<T> {
     const maxRetryCount = 5;
 
     try {
@@ -57,16 +66,16 @@ export class PixelaClient {
             await this.delay(300);
             return this.requestWithRetry(url, options, retryCount + 1); // 再帰的にリクエストを行う
           }
-          throw new Error('Exceeded maximum retry count');
+          throw new Error("Exceeded maximum retry count");
         }
-        throw new Error('Request failed');
+        throw new Error("Request failed");
       }
-      throw new Error('Request failed');
+      throw new Error("Request failed");
     } catch (error: unknown) {
       if (error instanceof Error) {
         throw new Error(`Request failed: ${error.message}`);
       } else {
-        throw new Error(`Request failed`)
+        throw new Error(`Request failed`);
       }
     }
   }
@@ -75,22 +84,22 @@ export class PixelaClient {
     const url = `/v1/users/${this.username}/graphs/${this.graphID}/increment`;
 
     const headers = new Headers();
-    headers.append('X-USER-TOKEN', this.token);
-    headers.append('Content-Length', '0');
+    headers.append("X-USER-TOKEN", this.token);
+    headers.append("Content-Length", "0");
 
     const options: RequestInit = {
-      method: 'PUT',
+      method: "PUT",
       headers,
-      body: '',
+      body: "",
     };
 
     try {
       return this.requestWithRetry<IncrementResponse>(url, options);
     } catch (error: unknown) {
       if (error instanceof Error) {
-        throw new Error(`Failed to increment: ${error.message}`);  
+        throw new Error(`Failed to increment: ${error.message}`);
       }
-      throw new Error(`Failed to increment`)
+      throw new Error(`Failed to increment`);
     }
   }
 
@@ -101,24 +110,27 @@ export class PixelaClient {
     if (from) {
       params.append("from", from);
     }
-    params.append("withBody", 'true');
+    params.append("withBody", "true");
 
     const headers = new Headers();
-    headers.append('X-USER-TOKEN', this.token);
+    headers.append("X-USER-TOKEN", this.token);
 
     const options: RequestInit = {
-      method: 'GET',
+      method: "GET",
       headers,
     };
 
     try {
-      const response = await this.requestWithRetry<GetPixelsResponse>(`${url}?${params.toString()}`, options);
+      const response = await this.requestWithRetry<GetPixelsResponse>(
+        `${url}?${params.toString()}`,
+        options
+      );
       return response.pixels;
     } catch (error: unknown) {
       if (error instanceof Error) {
         throw new Error(`Failed to get pixels: ${error.message}`);
       }
-      throw new Error(`Failed to get pixels`)
+      throw new Error(`Failed to get pixels`);
     }
   }
 }
@@ -129,8 +141,8 @@ type IncrementResponse = {
 };
 
 type GetPixelsResponse = {
-  pixels: Pixel[]
-}
+  pixels: Pixel[];
+};
 
 type Pixel = {
   date: string;

@@ -1,14 +1,15 @@
-import { type ReactNode } from "react"
+import { type ReactNode } from "react";
 
 type Props = {
-  children: ReactNode
-  label: string
-}
+  children: ReactNode;
+  label: string;
+};
 
 export function Tooltip({ children, label }: Props) {
   return (
     <div className="relative group">
-      <span className={`
+      <span
+        className={`
         whitespace-nowrap
         rounded
         bg-black
@@ -33,10 +34,11 @@ export function Tooltip({ children, label }: Props) {
         group-hover:opacity-100
         transition
         pointer-events-none
-      `}>
+      `}
+      >
         {label}
       </span>
       {children}
     </div>
-  )
+  );
 }

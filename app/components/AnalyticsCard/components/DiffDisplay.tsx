@@ -4,7 +4,7 @@ import { ArrowUp } from "../../icons/ArrowUp";
 type Props = {
   className?: string;
   diff: number;
-  label: string
+  label: string;
 };
 
 export function DiffDisplay({ className, diff, label }: Props) {
@@ -14,7 +14,7 @@ export function DiffDisplay({ className, diff, label }: Props) {
         <span className="text-gray-600 font-bold">±{diff}</span>
         <span className="ml-1 text-gray-500">{label}</span>
       </div>
-    ); 
+    );
   }
   if (diff > 0) {
     return (
@@ -23,7 +23,7 @@ export function DiffDisplay({ className, diff, label }: Props) {
         <span className="text-green-600 font-bold">+{diff}</span>
         <span className="ml-1 text-gray-500">{label}</span>
       </div>
-    ); 
+    );
   }
 
   if (diff < 0) {
@@ -33,7 +33,7 @@ export function DiffDisplay({ className, diff, label }: Props) {
         <span className="text-red-600 font-bold">{diff}</span>
         <span className="ml-1 text-gray-500">{label}</span>
       </div>
-    ); 
+    );
   }
   return null;
 }
