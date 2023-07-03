@@ -1,18 +1,18 @@
-import './globals.css'
-import { Inter } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/react'
-import { Logo } from './components/icons/Logo'
+import "./globals.css";
+import { Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
+import { Logo } from "./components/icons/Logo";
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: 'Pomorimo',
-}
+  title: "Pomorimo",
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
@@ -25,5 +25,5 @@ export default function RootLayout({
         <Analytics />
       </body>
     </html>
-  )
+  );
 }

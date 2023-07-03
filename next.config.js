@@ -4,11 +4,11 @@ const nextConfig = {
     config.module.rules.push({
       test: /\.mp3$/,
       use: {
-        loader: 'file-loader',
+        loader: "file-loader",
       },
     });
     return config;
-  }
-}
+  },
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;

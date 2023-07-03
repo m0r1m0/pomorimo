@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 
 type Callback = () => void;
 
@@ -18,7 +18,7 @@ export function useInterval(callback: Callback, delay: number | null) {
     if (delay !== null) {
       let id = setInterval(tick, delay);
       return () => {
-        clearInterval(id)
+        clearInterval(id);
       };
     }
   }, [delay]);
