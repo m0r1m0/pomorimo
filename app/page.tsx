@@ -7,6 +7,7 @@ import { AnalyticsCard } from "./components/AnalyticsCard";
 import { Tooltip } from "./components/Tooltip";
 import { PixelaClient } from "./pixela";
 import { Setting, Setup } from "./components/Setup";
+import { Countdown } from "./components/Countdown";
 
 const FOCUS_DURATION = 25 * 60;
 const BREAK_DURATION = 5 * 60;
@@ -139,12 +140,7 @@ export default function Index() {
         <>
           <div className="flex flex-col items-center justify-center">
             <span className="text-2xl">{isFocusMode ? "FOCUS" : "BREAK"}</span>
-            <span className="text-9xl mt-4">
-              {Math.floor(count / 60)
-                .toString()
-                .padStart(2, "0")}
-              :{(count % 60).toString().padStart(2, "0")}
-            </span>
+            <Countdown className="mt-4" count={count} />
             {timerRunning && (
               <div className="mt-8 flex items-center">
                 <Button onClick={pause}>PAUSE</Button>
