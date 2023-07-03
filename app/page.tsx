@@ -2,10 +2,11 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useInterval } from "./hooks/useInterval";
-import { Button } from "./components/buttons/Button";
+import { Button } from "./components/Button";
 import { AnalyticsCard } from "./components/AnalyticsCard";
 import { Tooltip } from "./components/Tooltip";
 import { PixelaClient } from "./pixela";
+import { Setting, Setup } from "./components/Setup";
 
 const FOCUS_DURATION = 25 * 60;
 const BREAK_DURATION = 5 * 60;
@@ -20,9 +21,11 @@ export default function Index() {
   const [isFocusMode, setIsFocusMode] = useState(true);
   const [timerRunning, setTimerRunning] = useState(false);
   const alarmSoundRef = useRef<HTMLAudioElement | null>(null);
-  const [username, setUsername] = useState("");
-  const [graphID, setGraphID] = useState("");
-  const [token, setToken] = useState("");
+  const [setting, setSetting] = useState<Setting>({
+    username: "",
+    graphID: "",
+    token: "",
+  });
   const [isPixelaInitialized, setIsPixelaInitialized] = useState(false);
   const [pixels, setPixels] = useState<Pixel[]>([]);
   const lastWeek = formatDate(
@@ -30,20 +33,21 @@ export default function Index() {
   );
 
   const incrementPixela = async () => {
-    const pixelaClient = new PixelaClient(username, graphID, token);
+    const pixelaClient = new PixelaClient(
+      setting.username,
+      setting.graphID,
+      setting.token
+    );
     await pixelaClient.increment();
     refreshPixels();
   };
 
-  const initializePixela = async () => {
-    setIsPixelaInitialized(true);
-    const pixelaClient = new PixelaClient(username, graphID, token);
-    const pixels = await pixelaClient.getPixels(lastWeek);
-    setPixels(pixels);
-  };
-
   const refreshPixels = async () => {
-    const pixelaClient = new PixelaClient(username, graphID, token);
+    const pixelaClient = new PixelaClient(
+      setting.username,
+      setting.graphID,
+      setting.token
+    );
     const pixels = await pixelaClient.getPixels(lastWeek);
     setPixels(pixels);
   };
@@ -117,6 +121,18 @@ export default function Index() {
     setIsFocusMode((m) => !m);
   };
 
+  const handleSetup = async (value: Setting) => {
+    setSetting(value);
+    setIsPixelaInitialized(true);
+    const pixelaClient = new PixelaClient(
+      value.username,
+      value.graphID,
+      value.token
+    );
+    const pixels = await pixelaClient.getPixels(lastWeek);
+    setPixels(pixels);
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center">
       {isPixelaInitialized && (
@@ -165,55 +181,7 @@ export default function Index() {
           </div>
         </>
       )}
-      {!isPixelaInitialized && (
-        <div className="mt-12 flex flex-col">
-          <div className="flex flex-col">
-            <label className="block text-sm font-bold mb-2" htmlFor="username">
-              username
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              id="username"
-              type="text"
-              placeholder="username"
-              onChange={(v) => {
-                setUsername(v.target.value);
-              }}
-            />
-          </div>
-          <div className="flex flex-col mt-4">
-            <label className="block text-sm font-bold mb-2" htmlFor="graphid">
-              graphID
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              id="graphid"
-              type="text"
-              placeholder="graphID"
-              onChange={(v) => {
-                setGraphID(v.target.value);
-              }}
-            />
-          </div>
-          <div className="flex flex-col mt-4">
-            <label className="block text-sm font-bold mb-2" htmlFor="token">
-              token
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              id="token"
-              type="password"
-              placeholder="token"
-              onChange={(v) => {
-                setToken(v.target.value);
-              }}
-            />
-          </div>
-          <Button className="mt-8" size="lg" onClick={initializePixela}>
-            Initialize Pixela
-          </Button>
-        </div>
-      )}
+      {!isPixelaInitialized && <Setup onSetup={handleSetup} />}
     </main>
   );
 }
