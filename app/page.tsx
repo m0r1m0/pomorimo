@@ -9,9 +9,9 @@ import { PixelaClient } from "./pixela";
 import { Setting, Setup } from "./components/Setup";
 import { Countdown } from "./components/Countdown";
 
-const FOCUS_DURATION = 0.1 * 60;
-const SHORT_BREAK_DURATION = 0.05 * 60;
-const LONG_BREAK_DURATION = 0.15 * 60;
+const FOCUS_DURATION = 25 * 60;
+const SHORT_BREAK_DURATION = 5 * 60;
+const LONG_BREAK_DURATION = 15 * 60;
 const SESSIONS_PER_LONG_BREAK = 4;
 
 type Pixel = {
