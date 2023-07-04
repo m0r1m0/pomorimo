@@ -9,8 +9,10 @@ import { PixelaClient } from "./pixela";
 import { Setting, Setup } from "./components/Setup";
 import { Countdown } from "./components/Countdown";
 
-const FOCUS_DURATION = 25 * 60;
-const BREAK_DURATION = 5 * 60;
+const FOCUS_DURATION = 0.1 * 60;
+const SHORT_BREAK_DURATION = 0.05 * 60;
+const LONG_BREAK_DURATION = 0.15 * 60;
+const SESSIONS_PER_LONG_BREAK = 4;
 
 type Pixel = {
   date: string;
@@ -29,6 +31,7 @@ export default function Index() {
   });
   const [isPixelaInitialized, setIsPixelaInitialized] = useState(false);
   const [pixels, setPixels] = useState<Pixel[]>([]);
+  const [currentSession, setCurrentSession] = useState(1);
   const lastWeek = formatDate(
     new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000)
   );
@@ -57,9 +60,14 @@ export default function Index() {
     () => {
       if (count === 0) {
         if (isFocusMode) {
-          setCount(BREAK_DURATION);
+          setCount(
+            currentSession % SESSIONS_PER_LONG_BREAK === 0
+              ? LONG_BREAK_DURATION
+              : SHORT_BREAK_DURATION
+          );
           setIsFocusMode(false);
           incrementPixela();
+          setCurrentSession((s) => s + 1);
         } else {
           setCount(FOCUS_DURATION);
           setIsFocusMode(true);
@@ -118,7 +126,7 @@ export default function Index() {
 
   const skip = () => {
     setTimerRunning(false);
-    setCount(isFocusMode ? BREAK_DURATION : FOCUS_DURATION);
+    setCount(isFocusMode ? SHORT_BREAK_DURATION : FOCUS_DURATION);
     setIsFocusMode((m) => !m);
   };
 
