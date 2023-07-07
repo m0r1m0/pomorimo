@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useInterval } from "./hooks/useInterval";
-import { Button } from "./components/Button";
+import { Button } from "../components/Button";
 import { AnalyticsCard } from "./components/AnalyticsCard";
 import { Tooltip } from "./components/Tooltip";
 import { PixelaClient } from "./pixela";
