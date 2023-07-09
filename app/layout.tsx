@@ -2,6 +2,7 @@ import "./globals.css";
 import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { Logo } from "./components/Logo";
+import { UserProvider } from "@auth0/nextjs-auth0/client";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,7 +22,7 @@ export default function RootLayout({
           <Logo className="w-10" />
           <span className="font-bold ml-2 text-2xl">Pomorimo</span>
         </div>
-        {children}
+        <UserProvider>{children}</UserProvider>
         <Analytics />
       </body>
     </html>

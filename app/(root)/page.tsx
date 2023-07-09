@@ -9,6 +9,7 @@ import { PixelaClient } from "./pixela";
 import { Setting, Setup } from "./components/Setup";
 import { Countdown } from "./components/Countdown";
 import { addSeconds, differenceInSeconds } from "date-fns";
+import { LinkButton } from "@/app/components/LinkButton";
 
 const FOCUS_DURATION = 25 * 60;
 const SHORT_BREAK_DURATION = 5 * 60;
@@ -170,7 +171,12 @@ export default function Index() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center">
+    <>
+      <LinkButton
+        href="/api/auth/logout"
+        label="Logout"
+        className="fixed top-8 right-8 text-sm !w-20 h-8"
+      />
       {isPixelaInitialized && (
         <>
           <div className="flex flex-col items-center justify-center">
@@ -213,7 +219,7 @@ export default function Index() {
         </>
       )}
       {!isPixelaInitialized && <Setup onSetup={handleSetup} />}
-    </main>
+    </>
   );
 }
 
