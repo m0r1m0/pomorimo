@@ -19,10 +19,12 @@ type Pixel = {
   quantity: string;
 };
 
+type TimerState = "running" | "stopped" | "paused";
+
 export default function Index() {
   const [count, setCount] = useState(FOCUS_DURATION);
   const [isFocusMode, setIsFocusMode] = useState(true);
-  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerState, setTimerState] = useState<TimerState>("stopped");
   const alarmSoundRef = useRef<HTMLAudioElement | null>(null);
   const [setting, setSetting] = useState<Setting>({
     username: "",
@@ -72,13 +74,13 @@ export default function Index() {
           setCount(FOCUS_DURATION);
           setIsFocusMode(true);
         }
-        setTimerRunning(false);
+        setTimerState("stopped");
         playAlarmSound();
         return;
       }
       setCount((c) => c - 1);
     },
-    timerRunning ? 1000 : null
+    timerState === "running" ? 1000 : null
   );
 
   const todayPixelQuantity = useMemo(() => {
@@ -117,15 +119,15 @@ export default function Index() {
     if (alarmSoundRef.current !== null) {
       alarmSoundRef.current.pause();
     }
-    setTimerRunning(true);
+    setTimerState("running");
   };
 
   const pause = () => {
-    setTimerRunning(false);
+    setTimerState("paused");
   };
 
   const skip = () => {
-    setTimerRunning(false);
+    setTimerState("stopped");
     setCount(isFocusMode ? SHORT_BREAK_DURATION : FOCUS_DURATION);
     setIsFocusMode((m) => !m);
   };
@@ -149,7 +151,7 @@ export default function Index() {
           <div className="flex flex-col items-center justify-center">
             <span className="text-2xl">{isFocusMode ? "FOCUS" : "BREAK"}</span>
             <Countdown className="mt-4" count={count} />
-            {timerRunning && (
+            {timerState === "running" && (
               <div className="mt-8 flex items-center">
                 <Button onClick={pause}>PAUSE</Button>
                 <Tooltip label="Skip this session">
@@ -162,7 +164,7 @@ export default function Index() {
                 </Tooltip>
               </div>
             )}
-            {!timerRunning && (
+            {(timerState === "stopped" || timerState === "paused") && (
               <Button className="mt-8" onClick={start}>
                 START
               </Button>
