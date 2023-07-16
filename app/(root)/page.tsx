@@ -8,21 +8,25 @@ import { Tooltip } from "./components/Tooltip";
 import { PixelaClient } from "./pixela";
 import { Setting, Setup } from "./components/Setup";
 import { Countdown } from "./components/Countdown";
+import { addSeconds, differenceInSeconds } from "date-fns";
 
 const FOCUS_DURATION = 25 * 60;
 const SHORT_BREAK_DURATION = 5 * 60;
 const LONG_BREAK_DURATION = 15 * 60;
 const SESSIONS_PER_LONG_BREAK = 4;
+const TIMER_INTERVAL_SEC = 1;
 
 type Pixel = {
   date: string;
   quantity: string;
 };
 
+type TimerState = "running" | "stopped" | "paused";
+
 export default function Index() {
   const [count, setCount] = useState(FOCUS_DURATION);
   const [isFocusMode, setIsFocusMode] = useState(true);
-  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerState, setTimerState] = useState<TimerState>("stopped");
   const alarmSoundRef = useRef<HTMLAudioElement | null>(null);
   const [setting, setSetting] = useState<Setting>({
     username: "",
@@ -35,6 +39,7 @@ export default function Index() {
   const lastWeek = formatDate(
     new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000)
   );
+  const [endDate, setEndDate] = useState<Date | null>(null);
 
   const incrementPixela = async () => {
     const pixelaClient = new PixelaClient(
@@ -58,6 +63,9 @@ export default function Index() {
 
   useInterval(
     () => {
+      if (endDate == null) {
+        return;
+      }
       if (count === 0) {
         if (isFocusMode) {
           setCount(
@@ -72,13 +80,15 @@ export default function Index() {
           setCount(FOCUS_DURATION);
           setIsFocusMode(true);
         }
-        setTimerRunning(false);
+        setTimerState("stopped");
         playAlarmSound();
         return;
       }
-      setCount((c) => c - 1);
+      const now = new Date();
+      const newCount = differenceInSeconds(endDate, now);
+      setCount(newCount);
     },
-    timerRunning ? 1000 : null
+    timerState === "running" ? TIMER_INTERVAL_SEC * 1000 : null
   );
 
   const todayPixelQuantity = useMemo(() => {
@@ -113,19 +123,36 @@ export default function Index() {
     });
   };
 
-  const start = () => {
+  const handleStart = () => {
     if (alarmSoundRef.current !== null) {
       alarmSoundRef.current.pause();
     }
-    setTimerRunning(true);
+    if (timerState === "stopped") {
+      startTimer();
+      return;
+    }
+    if (timerState === "paused") {
+      restartTimer();
+      return;
+    }
+  };
+
+  const startTimer = () => {
+    const now = new Date();
+    setEndDate(addSeconds(now, count + TIMER_INTERVAL_SEC));
+    setTimerState("running");
+  };
+
+  const restartTimer = () => {
+    setTimerState("running");
   };
 
   const pause = () => {
-    setTimerRunning(false);
+    setTimerState("paused");
   };
 
   const skip = () => {
-    setTimerRunning(false);
+    setTimerState("stopped");
     setCount(isFocusMode ? SHORT_BREAK_DURATION : FOCUS_DURATION);
     setIsFocusMode((m) => !m);
   };
@@ -149,7 +176,7 @@ export default function Index() {
           <div className="flex flex-col items-center justify-center">
             <span className="text-2xl">{isFocusMode ? "FOCUS" : "BREAK"}</span>
             <Countdown className="mt-4" count={count} />
-            {timerRunning && (
+            {timerState === "running" && (
               <div className="mt-8 flex items-center">
                 <Button onClick={pause}>PAUSE</Button>
                 <Tooltip label="Skip this session">
@@ -162,8 +189,8 @@ export default function Index() {
                 </Tooltip>
               </div>
             )}
-            {!timerRunning && (
-              <Button className="mt-8" onClick={start}>
+            {(timerState === "stopped" || timerState === "paused") && (
+              <Button className="mt-8" onClick={handleStart}>
                 START
               </Button>
             )}
