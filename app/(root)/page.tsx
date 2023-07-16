@@ -8,11 +8,13 @@ import { Tooltip } from "./components/Tooltip";
 import { PixelaClient } from "./pixela";
 import { Setting, Setup } from "./components/Setup";
 import { Countdown } from "./components/Countdown";
+import { addSeconds, differenceInSeconds } from "date-fns";
 
 const FOCUS_DURATION = 25 * 60;
 const SHORT_BREAK_DURATION = 5 * 60;
 const LONG_BREAK_DURATION = 15 * 60;
 const SESSIONS_PER_LONG_BREAK = 4;
+const TIMER_INTERVAL_SEC = 1;
 
 type Pixel = {
   date: string;
@@ -37,6 +39,7 @@ export default function Index() {
   const lastWeek = formatDate(
     new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000)
   );
+  const [endDate, setEndDate] = useState<Date | null>(null);
 
   const incrementPixela = async () => {
     const pixelaClient = new PixelaClient(
@@ -60,6 +63,9 @@ export default function Index() {
 
   useInterval(
     () => {
+      if (endDate == null) {
+        return;
+      }
       if (count === 0) {
         if (isFocusMode) {
           setCount(
@@ -78,9 +84,11 @@ export default function Index() {
         playAlarmSound();
         return;
       }
-      setCount((c) => c - 1);
+      const now = new Date();
+      const newCount = differenceInSeconds(endDate, now);
+      setCount(newCount);
     },
-    timerState === "running" ? 1000 : null
+    timerState === "running" ? TIMER_INTERVAL_SEC * 1000 : null
   );
 
   const todayPixelQuantity = useMemo(() => {
@@ -115,10 +123,27 @@ export default function Index() {
     });
   };
 
-  const start = () => {
+  const handleStart = () => {
     if (alarmSoundRef.current !== null) {
       alarmSoundRef.current.pause();
     }
+    if (timerState === "stopped") {
+      startTimer();
+      return;
+    }
+    if (timerState === "paused") {
+      restartTimer();
+      return;
+    }
+  };
+
+  const startTimer = () => {
+    const now = new Date();
+    setEndDate(addSeconds(now, count + TIMER_INTERVAL_SEC));
+    setTimerState("running");
+  };
+
+  const restartTimer = () => {
     setTimerState("running");
   };
 
@@ -165,7 +190,7 @@ export default function Index() {
               </div>
             )}
             {(timerState === "stopped" || timerState === "paused") && (
-              <Button className="mt-8" onClick={start}>
+              <Button className="mt-8" onClick={handleStart}>
                 START
               </Button>
             )}
