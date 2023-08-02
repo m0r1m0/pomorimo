@@ -1,81 +1,101 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useInterval } from "./hooks/useInterval";
 import { Button } from "../components/Button";
 import { AnalyticsCard } from "./components/AnalyticsCard";
 import { Tooltip } from "./components/Tooltip";
-import { PixelaClient } from "./pixela";
-import { Setting, Setup } from "./components/Setup";
 import { Countdown } from "./components/Countdown";
-import { addSeconds, differenceInSeconds } from "date-fns";
+import {
+  addSeconds,
+  compareAsc,
+  differenceInSeconds,
+  parseISO,
+} from "date-fns";
+import { LinkButton } from "@/app/components/LinkButton";
+import { Pomodoro, Session } from "@prisma/client";
 
 const FOCUS_DURATION = 25 * 60;
 const SHORT_BREAK_DURATION = 5 * 60;
 const LONG_BREAK_DURATION = 15 * 60;
-const SESSIONS_PER_LONG_BREAK = 4;
+const POMODOROS_PER_LONG_BREAK = 4;
 const TIMER_INTERVAL_SEC = 1;
 
-type Pixel = {
-  date: string;
-  quantity: string;
-};
-
-type TimerState = "running" | "stopped" | "paused";
+type TimerState = "running" | "stopped";
 
 export default function Index() {
   const [count, setCount] = useState(FOCUS_DURATION);
   const [isFocusMode, setIsFocusMode] = useState(true);
   const [timerState, setTimerState] = useState<TimerState>("stopped");
   const alarmSoundRef = useRef<HTMLAudioElement | null>(null);
-  const [setting, setSetting] = useState<Setting>({
-    username: "",
-    graphID: "",
-    token: "",
-  });
-  const [isPixelaInitialized, setIsPixelaInitialized] = useState(false);
-  const [pixels, setPixels] = useState<Pixel[]>([]);
-  const [currentSession, setCurrentSession] = useState(1);
-  const lastWeek = formatDate(
-    new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000)
-  );
   const [endDate, setEndDate] = useState<Date | null>(null);
+  const [currentSession, setCurrentSession] = useState<APIResponseJson<
+    Session & { pomodoros: Pomodoro[] }
+  > | null>(null);
+  const [analytics, setAnalytics] = useState<{
+    today: number;
+    yesterday: number;
+    weekly: number;
+    lastWeek: number;
+  } | null>(null);
 
-  const incrementPixela = async () => {
-    const pixelaClient = new PixelaClient(
-      setting.username,
-      setting.graphID,
-      setting.token
-    );
-    await pixelaClient.increment();
-    refreshPixels();
-  };
+  useEffect(() => {
+    async function getCurrentSession(): Promise<APIResponseJson<
+      Session & {
+        pomodoros: Pomodoro[];
+      }
+    > | null> {
+      const response = await fetch("/api/sessions");
+      return response.json();
+    }
+    getCurrentSession().then((session) => {
+      if (session === null) {
+        return;
+      }
+      setCurrentSession(session);
 
-  const refreshPixels = async () => {
-    const pixelaClient = new PixelaClient(
-      setting.username,
-      setting.graphID,
-      setting.token
-    );
-    const pixels = await pixelaClient.getPixels(lastWeek);
-    setPixels(pixels);
-  };
+      const runningPomodoro = findRunningPomodoro(session.pomodoros);
+      if (runningPomodoro == null) {
+        return;
+      }
+
+      setCount(
+        differenceInSeconds(parseISO(runningPomodoro.endTime), new Date())
+      );
+      setEndDate(parseISO(runningPomodoro.endTime));
+      setTimerState("running");
+    });
+  }, []);
+
+  useEffect(() => {
+    async function getAnalytics() {
+      const res = await fetch(`/api/analytics`);
+      const data = await res.json();
+      setAnalytics(data);
+    }
+    getAnalytics();
+  }, []);
 
   useInterval(
     () => {
-      if (endDate == null) {
+      if (endDate == null || currentSession == null) {
         return;
       }
       if (count === 0) {
         if (isFocusMode) {
-          setCount(
-            currentSession % SESSIONS_PER_LONG_BREAK === 0
-              ? LONG_BREAK_DURATION
-              : SHORT_BREAK_DURATION
-          );
+          if (currentSession.pomodoros.length === POMODOROS_PER_LONG_BREAK) {
+            setCount(LONG_BREAK_DURATION);
+            fetch(`/api/sessions/${currentSession?.id}/end`, {
+              method: "PUT",
+              body: JSON.stringify({
+                endTime: new Date().toISOString(),
+              }),
+            });
+            setCurrentSession(null);
+          } else {
+            setCount(SHORT_BREAK_DURATION);
+          }
           setIsFocusMode(false);
-          incrementPixela();
-          setCurrentSession((s) => s + 1);
         } else {
           setCount(FOCUS_DURATION);
           setIsFocusMode(true);
@@ -90,28 +110,6 @@ export default function Index() {
     },
     timerState === "running" ? TIMER_INTERVAL_SEC * 1000 : null
   );
-
-  const todayPixelQuantity = useMemo(() => {
-    const today = formatDate(new Date());
-    return Number(pixels.find((p) => p.date === today)?.quantity ?? "0");
-  }, [pixels]);
-
-  const yesterdayPixelQuantity = useMemo(() => {
-    let yesterdayDate = new Date();
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterday = formatDate(yesterdayDate);
-    return Number(pixels.find((p) => p.date === yesterday)?.quantity ?? "0");
-  }, [pixels]);
-
-  const totalPixelQuantity = useMemo(() => {
-    return pixels.reduce((acc, pixel) => {
-      return acc + Number(pixel.quantity);
-    }, 0);
-  }, [pixels]);
-
-  const lastWeekPixelQuantity = useMemo(() => {
-    return Number(pixels.find((p) => p.date === lastWeek)?.quantity ?? "0");
-  }, [lastWeek, pixels]);
 
   const playAlarmSound = () => {
     if (!alarmSoundRef.current) {
@@ -131,15 +129,36 @@ export default function Index() {
       startTimer();
       return;
     }
-    if (timerState === "paused") {
-      restartTimer();
-      return;
-    }
+  };
+
+  const startPomodoro = async (startTime: Date, endTime: Date) => {
+    const response = await fetch(`/api/sessions/pomodoro`, {
+      method: "POST",
+      body: JSON.stringify({
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+      }),
+    });
+    const updatedSession = await response.json();
+    setCurrentSession(updatedSession);
+  };
+
+  const deletePomodoro = async (pomodoroId: number) => {
+    const response = await fetch(`/api/sessions/pomodoro/${pomodoroId}`, {
+      method: "DELETE",
+    });
+    const updatedSession = await response.json();
+
+    setCurrentSession(updatedSession);
   };
 
   const startTimer = () => {
     const now = new Date();
-    setEndDate(addSeconds(now, count + TIMER_INTERVAL_SEC));
+    const end = addSeconds(now, count + TIMER_INTERVAL_SEC);
+    if (isFocusMode) {
+      startPomodoro(now, end);
+    }
+    setEndDate(end);
     setTimerState("running");
   };
 
@@ -147,73 +166,64 @@ export default function Index() {
     setTimerState("running");
   };
 
-  const pause = () => {
-    setTimerState("paused");
-  };
-
   const skip = () => {
+    const runningPomodoro = findRunningPomodoro(
+      currentSession?.pomodoros ?? []
+    );
+    if (runningPomodoro) {
+      deletePomodoro(runningPomodoro.id);
+    }
     setTimerState("stopped");
     setCount(isFocusMode ? SHORT_BREAK_DURATION : FOCUS_DURATION);
     setIsFocusMode((m) => !m);
   };
 
-  const handleSetup = async (value: Setting) => {
-    setSetting(value);
-    setIsPixelaInitialized(true);
-    const pixelaClient = new PixelaClient(
-      value.username,
-      value.graphID,
-      value.token
-    );
-    const pixels = await pixelaClient.getPixels(lastWeek);
-    setPixels(pixels);
-  };
-
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center">
-      {isPixelaInitialized && (
-        <>
-          <div className="flex flex-col items-center justify-center">
-            <span className="text-2xl">{isFocusMode ? "FOCUS" : "BREAK"}</span>
-            <Countdown className="mt-4" count={count} />
-            {timerState === "running" && (
-              <div className="mt-8 flex items-center">
-                <Button onClick={pause}>PAUSE</Button>
-                <Tooltip label="Skip this session">
-                  <Button
-                    className="ml-2 font-normal bg-transparent text-current hover:border border-black dark:border-slate-50 transition"
-                    onClick={skip}
-                  >
-                    Skip
-                  </Button>
-                </Tooltip>
-              </div>
-            )}
-            {(timerState === "stopped" || timerState === "paused") && (
-              <Button className="mt-8" onClick={handleStart}>
-                START
+    <>
+      <LinkButton
+        href="/api/auth/logout"
+        label="Logout"
+        className="fixed top-8 right-8 text-sm !w-20 h-8"
+      />
+      <div className="flex flex-col items-center justify-center">
+        <span className="text-2xl">{isFocusMode ? "FOCUS" : "BREAK"}</span>
+        <Countdown className="mt-4" count={count} />
+        {timerState === "running" && (
+          <div className="mt-8 flex items-center">
+            <Tooltip label="Skip this session">
+              <Button
+                className="ml-2 font-normal bg-transparent text-current hover:border border-black dark:border-slate-50 transition"
+                onClick={skip}
+              >
+                Skip
               </Button>
-            )}
+            </Tooltip>
           </div>
-          <div className="mt-20 flex">
-            <AnalyticsCard
-              title="Today Focus"
-              value={todayPixelQuantity}
-              prevValue={yesterdayPixelQuantity}
-              diffLabel="yesterday"
-            />
-            <AnalyticsCard
-              title="Weekly Focus"
-              value={totalPixelQuantity}
-              prevValue={lastWeekPixelQuantity}
-              diffLabel="7 days ago"
-              className="ml-4"
-            />
-          </div>
-        </>
+        )}
+        {timerState === "stopped" && (
+          <Button className="mt-8" onClick={handleStart}>
+            START
+          </Button>
+        )}
+      </div>
+      {analytics !== null && (
+        <div className="mt-20 flex">
+          <AnalyticsCard
+            title="Today Focus"
+            value={analytics.today}
+            prevValue={analytics.yesterday}
+            diffLabel="yesterday"
+          />
+          <AnalyticsCard
+            title="Weekly Focus"
+            value={analytics.weekly}
+            prevValue={analytics.lastWeek}
+            diffLabel="last week"
+            className="ml-4"
+          />
+        </div>
       )}
-      {!isPixelaInitialized && <Setup onSetup={handleSetup} />}
-    </main>
+    </>
   );
 }
 
@@ -231,10 +241,9 @@ const retryFetch = async (
   return response;
 };
 
-function formatDate(date: Date) {
-  const year = date.getFullYear().toString();
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const day = date.getDate().toString().padStart(2, "0");
-  const formattedDate = year + month + day;
-  return formattedDate;
+function findRunningPomodoro(pomodoros: APIResponseJson<Pomodoro>[]) {
+  const now = new Date();
+  return pomodoros.find(
+    (pomodoro) => compareAsc(now, parseISO(pomodoro.endTime)) === -1
+  );
 }
